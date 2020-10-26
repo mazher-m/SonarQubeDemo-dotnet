@@ -1,0 +1,41 @@
+trigger:
+- master
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+
+steps:
+- task: NuGetToolInstaller@1
+
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(solution)'
+
+- task: SonarQubePrepare@4
+  inputs:
+    SonarQube: 'SonarQubeServer'
+    scannerMode: 'MSBuild'
+    projectKey: 'SonarQubeDemo-dotnet'
+    projectName: 'SonarQubeDemo-dotnet'
+
+- task: VSBuild@1
+  inputs:
+    solution: '$(solution)'
+    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:DesktopBuildPackageLocation="$(build.artifactStagingDirectory)\WebApp.zip" /p:DeployIisAppPath="Default Web Site"'
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+
+- task: SonarQubeAnalyze@4
+
+- task: sonar-buildbreaker@8
+  inputs:
+    SonarQube: 'SonarQubeServer'
+
+- task: SonarQubePublish@4
+  inputs:
+    pollingTimeoutSec: '300'
